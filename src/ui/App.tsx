@@ -6,9 +6,9 @@ import {
   webDarkTheme,
   makeStyles,
 } from "@fluentui/react-components";
-import { ChatInput } from "./ChatInput";
-import { Message, MessageList } from "./MessageList";
-import { HeaderBar } from "./HeaderBar";
+import { ChatInput } from "./components/ChatInput";
+import { Message, MessageList } from "./components/MessageList";
+import { HeaderBar } from "./components/HeaderBar";
 import { useIsDarkMode } from "./useIsDarkMode";
 import { apiClient } from "./copilotService";
 
