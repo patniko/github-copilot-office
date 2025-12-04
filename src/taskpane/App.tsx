@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   FluentProvider,
   webLightTheme,
@@ -7,15 +7,9 @@ import {
   makeStyles,
 } from "@fluentui/react-components";
 import { ChatInput } from "./ChatInput";
-import { MessageList } from "./MessageList";
+import { Message, MessageList } from "./MessageList";
 import { HeaderBar } from "./HeaderBar";
-
-interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "assistant";
-  timestamp: Date;
-}
+import { useIsDarkMode } from "./useIsDarkMode";
 
 const useStyles = makeStyles({
   container: {
@@ -31,20 +25,7 @@ export const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
-
-  useEffect(() => {
-    const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    
-    const handleThemeChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches);
-    };
-
-    darkModeQuery.addEventListener("change", handleThemeChange);
-    return () => darkModeQuery.removeEventListener("change", handleThemeChange);
-  }, []);
+  const isDarkMode = useIsDarkMode();
 
   const handleSend = async () => {
     if (!inputValue.trim()) return;

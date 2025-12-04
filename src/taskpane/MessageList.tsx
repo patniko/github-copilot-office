@@ -2,7 +2,7 @@ import * as React from "react";
 import { useRef, useEffect } from "react";
 import { makeStyles } from "@fluentui/react-components";
 
-interface Message {
+export interface Message {
   id: string;
   text: string;
   sender: "user" | "assistant";
