@@ -7,6 +7,7 @@ interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
+  onSent?: () => void;
   disabled?: boolean;
 }
 
@@ -54,8 +55,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (value === "") {
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [value]); // Refocus when value becomes empty (after sending)
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {

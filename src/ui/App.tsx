@@ -58,20 +58,32 @@ export const App: React.FC = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const userInput = inputValue;
     setInputValue("");
     setIsTyping(true);
 
-    // Simulate response for now
-    setTimeout(() => {
+    try {
+      // Call backend API
+      const response = await apiClient.testConnection();
+      
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: `You said: ${userMessage.text}`,
+        text: `Backend says: ${response.message} (You said: ${userInput})`,
         sender: "assistant",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        sender: "assistant",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   const handleClearChat = () => {

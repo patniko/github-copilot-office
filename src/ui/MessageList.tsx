@@ -43,6 +43,7 @@ const useStyles = makeStyles({
   },
   messageAssistant: {
     alignSelf: "flex-start",
+    backgroundColor: "var(--colorNeutralBackground1Hover)",
     padding: "10px 14px",
     borderRadius: "12px",
     maxWidth: "70%",

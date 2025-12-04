@@ -27,6 +27,11 @@ module.exports = defineConfig({
     port: 3000,
     strictPort: true,
     https: httpsConfig,
+    hmr: {
+      protocol: 'wss',
+      host: 'localhost',
+      port: 3000,
+    },
   },
   resolve: {
     alias: {

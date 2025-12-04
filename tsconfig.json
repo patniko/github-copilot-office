@@ -11,7 +11,12 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "copilot-sdk": ["../../../github/copilot-agent-runtime/copilot-sdk/nodejs/src"],
+      "copilot-sdk/*": ["../../../github/copilot-agent-runtime/copilot-sdk/nodejs/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]
