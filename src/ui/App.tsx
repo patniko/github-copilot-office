@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FluentProvider,
   webLightTheme,
@@ -10,6 +10,7 @@ import { ChatInput } from "./ChatInput";
 import { Message, MessageList } from "./MessageList";
 import { HeaderBar } from "./HeaderBar";
 import { useIsDarkMode } from "./useIsDarkMode";
+import { apiClient } from "./copilotService";
 
 const useStyles = makeStyles({
   container: {
@@ -25,10 +26,29 @@ export const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const isDarkMode = useIsDarkMode();
 
+  useEffect(() => {
+    // Test backend connection on mount
+    apiClient.testConnection()
+      .then((data) => {
+        console.log('Backend connected:', data);
+        setIsInitialized(true);
+      })
+      .catch((error) => {
+        console.error('Failed to connect to backend:', error);
+        setMessages([{
+          id: "error-init",
+          text: `Failed to connect to backend: ${error.message}`,
+          sender: "assistant",
+          timestamp: new Date(),
+        }]);
+      });
+  }, []);
+
   const handleSend = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !isInitialized) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -41,6 +61,7 @@ export const App: React.FC = () => {
     setInputValue("");
     setIsTyping(true);
 
+    // Simulate response for now
     setTimeout(() => {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -71,7 +92,7 @@ export const App: React.FC = () => {
           value={inputValue}
           onChange={setInputValue}
           onSend={handleSend}
-          disabled={isTyping}
+          disabled={isTyping || !isInitialized}
         />
       </div>
     </FluentProvider>
