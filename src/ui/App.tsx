@@ -28,6 +28,7 @@ export const App: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [session, setSession] = useState<any>(null);
+  const [client, setClient] = useState<any>(null);
   const [error, setError] = useState("");
   const isDarkMode = useIsDarkMode();
 
@@ -36,8 +37,9 @@ export const App: React.FC = () => {
       try {
         const host = Office.context.host;
         const tools = getToolsForHost(host);
-        const client = await createWebSocketClient(`wss://${location.host}/api/copilot`);
-        setSession(await client.createSession({ 
+        const newClient = await createWebSocketClient(`wss://${location.host}/api/copilot`);
+        setClient(newClient);
+        setSession(await newClient.createSession({ 
           model: 'claude-haiku-4.5',
           tools,
         }));
@@ -79,6 +81,9 @@ export const App: React.FC = () => {
             toolName: (event.data as any).toolName,
             timestamp: new Date(event.timestamp),
           }]);
+        } else if (event.type === 'assistant.turn_end') {
+          // Log what stopReason we got
+          console.log('[turn_end]', (event.data as any).stopReason);
         }
       }
       console.log('[query complete]');
@@ -89,11 +94,28 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
     setMessages([]);
     setInputValue("");
     setIsTyping(false);
     setError("");
+    
+    // Close old client and create a new session
+    try {
+      if (client) {
+        await client.stop();
+      }
+      const host = Office.context.host;
+      const tools = getToolsForHost(host);
+      const newClient = await createWebSocketClient(`wss://${location.host}/api/copilot`);
+      setClient(newClient);
+      setSession(await newClient.createSession({ 
+        model: 'claude-haiku-4.5',
+        tools,
+      }));
+    } catch (e: any) {
+      setError(`Failed to create new session: ${e.message}`);
+    }
   };
 
   return (

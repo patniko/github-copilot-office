@@ -24,23 +24,46 @@ function setupCopilotProxy(httpsServer) {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    child.on('error', (err) => {
+    child.on('error', () => {
       ws.close(1011, 'Child process error');
     });
 
-    child.on('exit', (code, signal) => {
+    child.on('exit', () => {
       ws.close(1000, 'Child process exited');
     });
 
-    // Proxy child stdout -> WebSocket
-    child.stdout.on('data', (data) => {
-      if (ws.readyState === ws.OPEN) {
-        ws.send(data);
-      }
-    });
+    // Buffer for incomplete LSP messages
+    let buffer = Buffer.alloc(0);
 
-    // Log child stderr
-    child.stderr.on('data', (data) => {
+    // Proxy child stdout -> WebSocket (buffer complete LSP messages)
+    child.stdout.on('data', (data) => {
+      buffer = Buffer.concat([buffer, data]);
+      
+      // Process complete messages from buffer
+      let iterations = 0;
+      while (iterations++ < 100) {
+        const headerEnd = buffer.indexOf('\r\n\r\n');
+        if (headerEnd === -1) break;
+        
+        const header = buffer.slice(0, headerEnd).toString('utf8');
+        const match = header.match(/Content-Length:\s*(\d+)/i);
+        if (!match) {
+          buffer = buffer.slice(headerEnd + 4);
+          continue;
+        }
+        
+        const contentLength = parseInt(match[1], 10);
+        const messageEnd = headerEnd + 4 + contentLength;
+        
+        if (buffer.length < messageEnd) break;
+        
+        const message = buffer.slice(0, messageEnd);
+        buffer = buffer.slice(messageEnd);
+        
+        if (ws.readyState === ws.OPEN) {
+          ws.send(message);
+        }
+      }
     });
 
     // Proxy WebSocket -> child stdin
@@ -56,7 +79,7 @@ function setupCopilotProxy(httpsServer) {
       }
     });
 
-    ws.on('error', (err) => {
+    ws.on('error', () => {
       if (!child.killed) {
         child.kill();
       }
