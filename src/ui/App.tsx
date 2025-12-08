@@ -7,8 +7,9 @@ import {
 } from "@fluentui/react-components";
 import { ChatInput } from "./components/ChatInput";
 import { Message, MessageList } from "./components/MessageList";
-import { HeaderBar } from "./components/HeaderBar";
+import { HeaderBar, ModelType } from "./components/HeaderBar";
 import { useIsDarkMode } from "./useIsDarkMode";
+import { useLocalStorage } from "./useLocalStorage";
 import { createWebSocketClient } from "../../copilot-sdk-nodejs/websocket-client";
 import { getToolsForHost } from "./tools";
 import React from "react";
@@ -22,6 +23,8 @@ const useStyles = makeStyles({
   },
 });
 
+const DEFAULT_MODEL: ModelType = "claude-sonnet-4.5";
+
 export const App: React.FC = () => {
   const styles = useStyles();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -30,24 +33,37 @@ export const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [client, setClient] = useState<any>(null);
   const [error, setError] = useState("");
+  const [selectedModel, setSelectedModel] = useLocalStorage<ModelType>("word-addin-selected-model", DEFAULT_MODEL);
   const isDarkMode = useIsDarkMode();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const host = Office.context.host;
-        const tools = getToolsForHost(host);
-        const newClient = await createWebSocketClient(`wss://${location.host}/api/copilot`);
-        setClient(newClient);
-        setSession(await newClient.createSession({ 
-          model: 'claude-haiku-4.5',
-          tools,
-        }));
-      } catch (e: any) {
-        setError(`Failed to connect: ${e.message}`);
+  const startNewSession = async (model: ModelType) => {
+    setMessages([]);
+    setInputValue("");
+    setIsTyping(false);
+    setError("");
+    
+    try {
+      if (client) {
+        await client.stop();
       }
-    })();
+      const host = Office.context.host;
+      const tools = getToolsForHost(host);
+      const newClient = await createWebSocketClient(`wss://${location.host}/api/copilot`);
+      setClient(newClient);
+      setSession(await newClient.createSession({ model, tools }));
+    } catch (e: any) {
+      setError(`Failed to create session: ${e.message}`);
+    }
+  };
+
+  useEffect(() => {
+    startNewSession(selectedModel);
   }, []);
+
+  const handleModelChange = (newModel: ModelType) => {
+    setSelectedModel(newModel);
+    startNewSession(newModel);
+  };
 
   const handleSend = async () => {
     if (!inputValue.trim() || !session) return;
@@ -94,34 +110,14 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleClearChat = async () => {
-    setMessages([]);
-    setInputValue("");
-    setIsTyping(false);
-    setError("");
-    
-    // Close old client and create a new session
-    try {
-      if (client) {
-        await client.stop();
-      }
-      const host = Office.context.host;
-      const tools = getToolsForHost(host);
-      const newClient = await createWebSocketClient(`wss://${location.host}/api/copilot`);
-      setClient(newClient);
-      setSession(await newClient.createSession({ 
-        model: 'claude-haiku-4.5',
-        tools,
-      }));
-    } catch (e: any) {
-      setError(`Failed to create new session: ${e.message}`);
-    }
-  };
-
   return (
     <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
       <div className={styles.container}>
-        <HeaderBar onNewChat={handleClearChat} />
+        <HeaderBar 
+          onNewChat={() => startNewSession(selectedModel)} 
+          selectedModel={selectedModel}
+          onModelChange={handleModelChange}
+        />
 
         <MessageList
           messages={messages}
