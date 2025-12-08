@@ -10,6 +10,7 @@ export interface Message {
   sender: "user" | "assistant" | "tool";
   timestamp: Date;
   toolName?: string;
+  images?: Array<{ dataUrl: string; name: string }>;
 }
 
 interface MessageListProps {
@@ -81,6 +82,27 @@ const useStyles = makeStyles({
     marginTop: "4px",
     color: "var(--colorNeutralForeground3)",
   },
+  attachmentContainer: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginTop: "8px",
+  },
+  attachmentThumbnail: {
+    width: "120px",
+    height: "120px",
+    borderRadius: "8px",
+    objectFit: "cover",
+    border: "2px solid rgba(255, 255, 255, 0.3)",
+  },
+  attachmentBadge: {
+    fontSize: "11px",
+    opacity: "0.8",
+    marginTop: "4px",
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+  },
 });
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -144,7 +166,21 @@ export const MessageList: React.FC<MessageListProps> = ({
               <span style={{ color: '#8b5cf6', fontSize: '26px', lineHeight: '1', marginTop: '-5px' }}>●</span>
               <div style={{ justifySelf: 'start' }}><Markdown remarkPlugins={[remarkGfm]}>{message.text}</Markdown></div>
             </>
-          ) : message.text}
+          ) : (
+            <>
+              {message.text}
+              {message.images && message.images.length > 0 && (
+                <div className={styles.attachmentContainer}>
+                  {message.images.map((img, idx) => (
+                    <div key={idx}>
+                      <img src={img.dataUrl} alt={img.name} className={styles.attachmentThumbnail} />
+                      <div className={styles.attachmentBadge}>📎 {img.name}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       ))}
       

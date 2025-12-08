@@ -5,7 +5,7 @@ import {
   webDarkTheme,
   makeStyles,
 } from "@fluentui/react-components";
-import { ChatInput } from "./components/ChatInput";
+import { ChatInput, ImageAttachment } from "./components/ChatInput";
 import { Message, MessageList } from "./components/MessageList";
 import { HeaderBar, ModelType } from "./components/HeaderBar";
 import { useIsDarkMode } from "./useIsDarkMode";
@@ -29,6 +29,7 @@ export const App: React.FC = () => {
   const styles = useStyles();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [images, setImages] = useState<ImageAttachment[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [client, setClient] = useState<any>(null);
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
   const startNewSession = async (model: ModelType) => {
     setMessages([]);
     setInputValue("");
+    setImages([]);
     setIsTyping(false);
     setError("");
     
@@ -66,21 +68,58 @@ export const App: React.FC = () => {
   };
 
   const handleSend = async () => {
-    if (!inputValue.trim() || !session) return;
+    if ((!inputValue.trim() && images.length === 0) || !session) return;
 
+    // Add user message with images
     setMessages((prev) => [...prev, {
       id: crypto.randomUUID(),
-      text: inputValue,
+      text: inputValue || (images.length > 0 ? `Sent ${images.length} image${images.length > 1 ? 's' : ''}` : ''),
       sender: "user",
       timestamp: new Date(),
+      images: images.length > 0 ? images.map(img => ({ dataUrl: img.dataUrl, name: img.name })) : undefined,
     }]);
     const userInput = inputValue;
+    const userImages = [...images];
     setInputValue("");
+    setImages([]);
     setIsTyping(true);
     setError("");
 
     try {
-      for await (const event of session.query({ prompt: userInput })) {
+      // Upload images to server and get file paths
+      const attachments: Array<{ type: "file", path: string, displayName?: string }> = [];
+      
+      for (const image of userImages) {
+        try {
+          const response = await fetch('/api/upload-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              dataUrl: image.dataUrl,
+              name: image.name 
+            }),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to upload image: ${response.statusText}`);
+          }
+          
+          const result = await response.json();
+          attachments.push({
+            type: "file",
+            path: result.path,
+            displayName: image.name,
+          });
+        } catch (uploadError: any) {
+          console.error('Image upload error:', uploadError);
+          setError(`Failed to upload image: ${uploadError.message}`);
+        }
+      }
+
+      for await (const event of session.query({ 
+        prompt: userInput || "Here are some images for you to analyze.",
+        attachments: attachments.length > 0 ? attachments : undefined
+      })) {
         console.log('[event]', event.type, event);
         if (event.type === 'assistant.message' && (event.data as any).content) {
           setMessages((prev) => [...prev, {
@@ -131,6 +170,8 @@ export const App: React.FC = () => {
           value={inputValue}
           onChange={setInputValue}
           onSend={handleSend}
+          images={images}
+          onImagesChange={setImages}
         />
       </div>
     </FluentProvider>
