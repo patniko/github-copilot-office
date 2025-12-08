@@ -28,29 +28,33 @@ fi
 
 echo ""
 
-# Step 2: Register manifest for Word and PowerPoint
+# Step 2: Register manifest for Word, PowerPoint, and Excel
 echo -e "\033[33mStep 2: Registering add-in manifest...\033[0m"
 echo "  Manifest: $MANIFEST_PATH"
 
-# Create directories for Word and PowerPoint if they don't exist
+# Create directories for Word, PowerPoint, and Excel if they don't exist
 WORD_WEF_DIR="$HOME/Library/Containers/com.microsoft.Word/Data/Documents/wef"
 POWERPOINT_WEF_DIR="$HOME/Library/Containers/com.microsoft.Powerpoint/Data/Documents/wef"
+EXCEL_WEF_DIR="$HOME/Library/Containers/com.microsoft.Excel/Data/Documents/wef"
 
 mkdir -p "$WORD_WEF_DIR"
 mkdir -p "$POWERPOINT_WEF_DIR"
+mkdir -p "$EXCEL_WEF_DIR"
 
-# Copy manifest to both directories
+# Copy manifest to all directories
 cp "$MANIFEST_PATH" "$WORD_WEF_DIR/"
 cp "$MANIFEST_PATH" "$POWERPOINT_WEF_DIR/"
+cp "$MANIFEST_PATH" "$EXCEL_WEF_DIR/"
 
 echo -e "  \033[32m✓ Add-in registered for Word\033[0m"
 echo -e "  \033[32m✓ Add-in registered for PowerPoint\033[0m"
+echo -e "  \033[32m✓ Add-in registered for Excel\033[0m"
 echo ""
 
 echo -e "\033[36mSetup complete! Next steps:\033[0m"
-echo "1. Close Word and PowerPoint if they are open"
+echo "1. Close Word, PowerPoint, and Excel if they are open"
 echo "2. Start the dev server: npm run dev"
-echo "3. Open Word or PowerPoint"
+echo "3. Open Word, PowerPoint, or Excel"
 echo "4. Look for 'Copilot Agent' button on the Home ribbon"
 echo ""
 echo -e "\033[90mTo unregister, run: ./unregister.sh\033[0m"

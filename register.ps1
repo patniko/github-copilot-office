@@ -2,7 +2,7 @@ $manifestPath = "$PSScriptRoot\manifest.xml"
 $manifestFullPath = (Resolve-Path $manifestPath).Path
 $certPath = "$PSScriptRoot\certs\localhost.pem"
 
-Write-Host "Setting up Word Add-in for development..." -ForegroundColor Cyan
+Write-Host "Setting up Office Add-in for development..." -ForegroundColor Cyan
 Write-Host ""
 
 # Step 1: Trust the SSL certificate
@@ -53,9 +53,9 @@ Write-Host "  ✓ Add-in registered" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Setup complete! Next steps:" -ForegroundColor Cyan
-Write-Host "1. Close Word if it is open"
+Write-Host "1. Close Word, PowerPoint, and Excel if they are open"
 Write-Host "2. Start the dev server: npm run dev"
-Write-Host "3. Open Word"
+Write-Host "3. Open Word, PowerPoint, or Excel"
 Write-Host "4. Look for 'Copilot Agent' button on the Home ribbon"
 Write-Host ""
 Write-Host "To unregister, run: .\unregister.ps1" -ForegroundColor Gray
