@@ -14,6 +14,10 @@ const isPkg = typeof process.pkg !== 'undefined';
 
 // Get the base directory (works both in dev and when packaged)
 function getBasePath() {
+  // Check if running from Electron tray app
+  if (process.env.COPILOT_OFFICE_BASE_PATH) {
+    return process.env.COPILOT_OFFICE_BASE_PATH;
+  }
   if (isPkg) {
     // When packaged, __dirname points to snapshot filesystem
     // The actual files are next to the executable
@@ -108,7 +112,7 @@ async function createServer() {
   app.use(express.static(distPath));
   
   // Fallback to index.html for SPA routing
-  app.get('*', (req, res) => {
+  app.get('*path', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 
@@ -128,7 +132,7 @@ async function createServer() {
     key: fs.readFileSync(keyPath),
   };
   
-  const PORT = 3000;
+  const PORT = process.env.PORT || 52390;
   const httpsServer = https.createServer(httpsConfig, app);
 
   setupCopilotProxy(httpsServer);
@@ -136,6 +140,14 @@ async function createServer() {
   httpsServer.listen(PORT, () => {
     console.log(`GitHub Copilot Office Add-in Server running on https://localhost:${PORT}`);
   });
+
+  return httpsServer;
 }
 
-createServer().catch(console.error);
+// Export for use by tray app
+module.exports = { createServer };
+
+// Run directly if not required as a module
+if (require.main === module) {
+  createServer().catch(console.error);
+}

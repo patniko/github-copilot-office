@@ -2,15 +2,19 @@
   "name": "word-addin",
   "version": "1.0.0",
   "description": "GitHub Copilot Office Add-in",
-  "main": "index.js",
+  "main": "src/tray/main.js",
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server-prod.js",
+    "start:tray": "electron .",
     "build": "vite build",
     "build:icons": "node scripts/generate-icons.js",
     "build:installer": "npm run build && npm run build:macos && npm run build:windows",
     "build:macos": "./installer/macos/build.sh",
-    "build:windows": "./installer/windows/build.sh"
+    "build:windows": "powershell -ExecutionPolicy Bypass -File installer/windows/build.ps1",
+    "build:electron": "npm run build && electron-builder",
+    "build:electron:win": "npm run build && electron-builder --win",
+    "build:electron:mac": "npm run build && electron-builder --mac"
   },
   "pkg": {
     "assets": [],
@@ -18,6 +22,58 @@
       "src/copilotProxy.js"
     ],
     "outputPath": "build"
+  },
+  "build": {
+    "appId": "com.github.copilot-office-addin",
+    "productName": "GitHub Copilot Office Add-in",
+    "directories": {
+      "output": "build/electron"
+    },
+    "files": [
+      "src/tray/**/*",
+      "src/server-prod.js",
+      "src/copilotProxy.js",
+      "node_modules/**/*",
+      "!node_modules/**/node_modules/**"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      },
+      {
+        "from": "certs",
+        "to": "certs"
+      },
+      {
+        "from": "assets",
+        "to": "assets"
+      },
+      {
+        "from": "manifest-prod.xml",
+        "to": "manifest.xml"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/tray-icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/tray-icon.ico",
+      "uninstallerIcon": "assets/tray-icon.ico",
+      "include": "installer/windows/nsis-scripts.nsh"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "installer/macos/icon.icns",
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    }
   },
   "keywords": [],
   "author": "",
@@ -29,6 +85,9 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "@yao-pkg/pkg": "^6.11.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
     "html-webpack-plugin": "^5.6.5",
     "sharp": "^0.34.5",
     "to-ico": "^1.1.5",

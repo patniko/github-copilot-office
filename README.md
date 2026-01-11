@@ -37,6 +37,10 @@ npm run build:installer
 # Build individually
 npm run build:macos      # → build/macos/CopilotOfficeAddin-1.0.0.pkg
 npm run build:windows    # → build/windows/CopilotOfficeAddin-Setup-1.0.0.exe
+
+# Build Electron installer (with system tray support)
+npm run build:electron:win   # → build/electron/GitHub Copilot Office Add-in Setup 1.0.0.exe
+npm run build:electron:mac   # → build/electron/GitHub Copilot Office Add-in-1.0.0.dmg
 ```
 
 ### What the Installers Do
@@ -46,8 +50,8 @@ npm run build:windows    # → build/windows/CopilotOfficeAddin-Setup-1.0.0.exe
 | Install location | `C:\Program Files\GitHub Copilot Office Add-in\` | `/Applications/GitHub Copilot Office Add-in/` |
 | Trust SSL cert | User's Root store | System keychain |
 | Register with Office | Registry key | wef folders |
-| Auto-start | Scheduled Task | LaunchAgent |
-| Background service | ✓ Runs on port 3000 | ✓ Runs on port 3000 |
+| Auto-start | Registry Run key | LaunchAgent |
+| Background service | ✓ System tray on port 52390 | ✓ Menu bar on port 52390 |
 
 Users just run the installer, then open Office—the add-in appears automatically.
 
@@ -97,9 +101,10 @@ See [installer/README.md](installer/README.md) for detailed build instructions, 
 ## Troubleshooting
 
 ### Add-in not appearing
-1. Ensure the server is running: visit https://localhost:3000
-2. Restart the Office application
-3. Clear Office cache and try again
+1. Ensure the server is running: visit https://localhost:52390 (production) or https://localhost:3000 (development)
+2. Look for the GitHub Copilot icon in the system tray (Windows) or menu bar (macOS)
+3. Restart the Office application
+4. Clear Office cache and try again
 
 ### SSL Certificate errors
 1. Re-run the register script or installer

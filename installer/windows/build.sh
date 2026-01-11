@@ -23,7 +23,7 @@ npm run build
 
 # Build the server executable with pkg
 echo "Building server executable for Windows..."
-npx @yao-pkg/pkg src/server-prod.js \
+npm exec -- pkg src/server-prod.js \
     --targets node18-win-x64 \
     --output "$BUILD_DIR/copilot-office-server.exe" \
     --compress GZip

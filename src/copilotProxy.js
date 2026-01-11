@@ -8,7 +8,7 @@ const COPILOT_MODULE = path.resolve(__dirname, '../node_modules/@github/copilot/
 function setupCopilotProxy(httpsServer) {
   const wss = new WebSocketServer({ noServer: true });
 
-  httpsServer.on('upgrade', (request, socket, head) => {
+  const upgradeHandler = (request, socket, head) => {
     const url = new URL(request.url, `https://${request.headers.host}`);
     
     if (url.pathname === '/api/copilot') {
@@ -17,7 +17,15 @@ function setupCopilotProxy(httpsServer) {
       });
     }
     // Let other WebSocket connections (e.g., Vite HMR) pass through
-  });
+  };
+
+  httpsServer.on('upgrade', upgradeHandler);
+
+  // Store cleanup function on the server
+  httpsServer.closeWebSockets = () => {
+    wss.clients.forEach(client => client.terminate());
+    wss.close();
+  };
 
   wss.on('connection', (ws) => {
     const child = spawn(process.execPath, [COPILOT_MODULE, '--server', '--stdio'], {

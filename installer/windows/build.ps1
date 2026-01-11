@@ -25,7 +25,7 @@ Pop-Location
 # Build the server executable with pkg
 Write-Host "Building server executable..." -ForegroundColor Yellow
 Push-Location $RootDir
-npx @yao-pkg/pkg src/server-prod.js `
+npm exec -- pkg src/server-prod.js `
     --targets node18-win-x64 `
     --output "$BuildDir\copilot-office-server.exe" `
     --compress GZip
