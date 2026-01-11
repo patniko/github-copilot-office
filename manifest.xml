@@ -7,7 +7,7 @@
   <Version>1.0.0.0</Version>
   <ProviderName>Your Company</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Copilot Agent"/>
+  <DisplayName DefaultValue="GitHub Copilot Agent"/>
   <Description DefaultValue="An Office add-in with a ribbon button"/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
@@ -154,8 +154,8 @@
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="Get started with your add-in!"/>
-        <bt:String id="CommandsGroup.Label" DefaultValue="Copilot Agent"/>
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Copilot Agent"/>
+        <bt:String id="CommandsGroup.Label" DefaultValue="GitHub Copilot Agent"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="GitHub Copilot Agent"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Your add-in loaded successfully. Go to the HOME tab and click the 'Show Taskpane' button to get started."/>
