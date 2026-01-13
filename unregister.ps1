@@ -1,6 +1,6 @@
 $regPath = "HKCU:\Software\Microsoft\Office\16.0\WEF\Developer"
 
-Write-Host "Removing all sideloaded add-ins from Word, PowerPoint, and Excel..." -ForegroundColor Cyan
+Write-Host "Removing all sideloaded add-ins from Word, PowerPoint, Excel, and OneNote..." -ForegroundColor Cyan
 
 if (Test-Path $regPath) {
     Remove-Item -Path $regPath -Recurse -Force

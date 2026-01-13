@@ -1,11 +1,12 @@
 #!/bin/bash
 # Post-installation script for macOS
+# Runs after the Electron app is installed to /Applications
 
-APP_DIR="/Applications/GitHub Copilot Office Add-in"
-LAUNCHAGENT_SRC="$APP_DIR/com.github.copilot-office-addin.plist"
-LAUNCHAGENT_DEST="$HOME/Library/LaunchAgents/com.github.copilot-office-addin.plist"
-CERT_PATH="$APP_DIR/certs/localhost.pem"
-MANIFEST_PATH="$APP_DIR/manifest.xml"
+APP_DIR="/Applications/GitHub Copilot Office Add-in.app"
+RESOURCES_DIR="$APP_DIR/Contents/Resources"
+LAUNCHAGENT_SRC="$RESOURCES_DIR/com.github.copilot-office-addin.plist"
+CERT_PATH="$RESOURCES_DIR/certs/localhost.pem"
+MANIFEST_PATH="$RESOURCES_DIR/manifest.xml"
 
 # Get the installing user (not root)
 if [ -n "$USER" ] && [ "$USER" != "root" ]; then
@@ -21,34 +22,81 @@ USER_HOME=$(dscl . -read /Users/$INSTALL_USER NFSHomeDirectory | awk '{print $2}
 echo "Installing for user: $INSTALL_USER"
 echo "User home: $USER_HOME"
 
-# Trust SSL certificate
-echo "Trusting SSL certificate..."
-security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$CERT_PATH" 2>/dev/null || true
+# Trust SSL certificate (if it exists)
+if [ -f "$CERT_PATH" ]; then
+    echo "Trusting SSL certificate..."
+    security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$CERT_PATH" 2>/dev/null || true
+else
+    echo "Note: Certificate file not found at $CERT_PATH, skipping trust"
+fi
 
 # Create LaunchAgents directory if needed
 mkdir -p "$USER_HOME/Library/LaunchAgents"
 
-# Install LaunchAgent for the user
+# Update LaunchAgent plist with correct app path and install it
 LAUNCHAGENT_USER_DEST="$USER_HOME/Library/LaunchAgents/com.github.copilot-office-addin.plist"
-cp "$LAUNCHAGENT_SRC" "$LAUNCHAGENT_USER_DEST"
+
+# Create the LaunchAgent plist to start the Electron app
+cat > "$LAUNCHAGENT_USER_DEST" << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.github.copilot-office-addin</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/open</string>
+        <string>-a</string>
+        <string>/Applications/GitHub Copilot Office Add-in.app</string>
+        <string>--args</string>
+        <string>--hidden</string>
+    </array>
+    
+    <key>RunAtLoad</key>
+    <true/>
+    
+    <key>KeepAlive</key>
+    <false/>
+    
+    <key>StandardOutPath</key>
+    <string>/tmp/copilot-office-addin.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>/tmp/copilot-office-addin.err</string>
+</dict>
+</plist>
+EOF
+
 chown $INSTALL_USER:staff "$LAUNCHAGENT_USER_DEST"
+chmod 644 "$LAUNCHAGENT_USER_DEST"
 
-# Register add-in with Office apps
-WORD_WEF="$USER_HOME/Library/Containers/com.microsoft.Word/Data/Documents/wef"
-PPT_WEF="$USER_HOME/Library/Containers/com.microsoft.Powerpoint/Data/Documents/wef"
-EXCEL_WEF="$USER_HOME/Library/Containers/com.microsoft.Excel/Data/Documents/wef"
+echo "LaunchAgent installed"
 
-for WEF_DIR in "$WORD_WEF" "$PPT_WEF" "$EXCEL_WEF"; do
-    mkdir -p "$WEF_DIR"
-    cp "$MANIFEST_PATH" "$WEF_DIR/"
-    chown -R $INSTALL_USER:staff "$WEF_DIR"
-done
+# Register add-in with Office apps (if manifest exists)
+if [ -f "$MANIFEST_PATH" ]; then
+    WORD_WEF="$USER_HOME/Library/Containers/com.microsoft.Word/Data/Documents/wef"
+    PPT_WEF="$USER_HOME/Library/Containers/com.microsoft.Powerpoint/Data/Documents/wef"
+    EXCEL_WEF="$USER_HOME/Library/Containers/com.microsoft.Excel/Data/Documents/wef"
 
-echo "Add-in registered for Word, PowerPoint, and Excel"
+    for WEF_DIR in "$WORD_WEF" "$PPT_WEF" "$EXCEL_WEF"; do
+        mkdir -p "$WEF_DIR"
+        cp "$MANIFEST_PATH" "$WEF_DIR/"
+        chown -R $INSTALL_USER:staff "$WEF_DIR"
+    done
 
-# Load the LaunchAgent (as the user, not root)
+    echo "Add-in registered for Word, PowerPoint, and Excel"
+else
+    echo "Note: Manifest file not found at $MANIFEST_PATH"
+fi
+
+# Load the LaunchAgent and start the app (as the user, not root)
 sudo -u $INSTALL_USER launchctl unload "$LAUNCHAGENT_USER_DEST" 2>/dev/null || true
 sudo -u $INSTALL_USER launchctl load "$LAUNCHAGENT_USER_DEST"
+
+# Also start the app immediately so the tray icon appears
+sudo -u $INSTALL_USER open -a "/Applications/GitHub Copilot Office Add-in.app" --args --hidden 2>/dev/null || true
 
 echo "Service started"
 echo "Installation complete!"

@@ -11,6 +11,7 @@ echo ""
 WORD_WEF_DIR="$HOME/Library/Containers/com.microsoft.Word/Data/Documents/wef"
 POWERPOINT_WEF_DIR="$HOME/Library/Containers/com.microsoft.Powerpoint/Data/Documents/wef"
 EXCEL_WEF_DIR="$HOME/Library/Containers/com.microsoft.Excel/Data/Documents/wef"
+ONENOTE_WEF_DIR="$HOME/Library/Containers/com.microsoft.onenote.mac/Data/Documents/wef"
 
 # Remove manifest from Word directory
 if [ -f "$WORD_WEF_DIR/$MANIFEST_FILENAME" ]; then
@@ -34,6 +35,14 @@ if [ -f "$EXCEL_WEF_DIR/$MANIFEST_FILENAME" ]; then
     echo -e "  \033[32m✓ Removed add-in from Excel\033[0m"
 else
     echo -e "  \033[90m• Add-in not found in Excel directory\033[0m"
+fi
+
+# Remove manifest from OneNote directory
+if [ -f "$ONENOTE_WEF_DIR/$MANIFEST_FILENAME" ]; then
+    rm "$ONENOTE_WEF_DIR/$MANIFEST_FILENAME"
+    echo -e "  \033[32m✓ Removed add-in from OneNote\033[0m"
+else
+    echo -e "  \033[90m• Add-in not found in OneNote directory\033[0m"
 fi
 
 echo ""

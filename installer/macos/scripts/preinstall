@@ -3,6 +3,7 @@
 # Stops any running instance before upgrade
 
 LAUNCHAGENT="com.github.copilot-office-addin"
+APP_NAME="GitHub Copilot Office Add-in"
 
 # Get the installing user
 if [ -n "$USER" ] && [ "$USER" != "root" ]; then
@@ -22,7 +23,10 @@ if [ -f "$LAUNCHAGENT_PATH" ]; then
     sudo -u $INSTALL_USER launchctl unload "$LAUNCHAGENT_PATH" 2>/dev/null || true
 fi
 
-# Kill any running process
+# Kill any running Electron app
+pkill -f "$APP_NAME" 2>/dev/null || true
+
+# Also kill any old standalone server process (from previous versions)
 pkill -f "copilot-office-server" 2>/dev/null || true
 
 echo "Pre-install cleanup complete"

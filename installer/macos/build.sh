@@ -1,66 +1,65 @@
 #!/bin/bash
-# Build script for macOS installer (.pkg)
+# Build script for macOS installer
 # Run from repository root: ./installer/macos/build.sh
+#
+# This script builds an Electron app with a system tray icon.
+# The app runs in the background and provides the Office Add-in server.
 
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROOT_DIR="$SCRIPT_DIR/../.."
 BUILD_DIR="$ROOT_DIR/build/macos"
+ELECTRON_BUILD_DIR="$ROOT_DIR/build/electron"
 APP_NAME="GitHub Copilot Office Add-in"
 VERSION="1.0.0"
 IDENTIFIER="com.github.copilot-office-addin"
 
 echo "Building macOS installer..."
 
-# Clean and create build directory
-rm -rf "$BUILD_DIR"
-mkdir -p "$BUILD_DIR/payload/Applications/$APP_NAME"
-mkdir -p "$BUILD_DIR/scripts"
-
-# Build the frontend
-echo "Building frontend..."
-cd "$ROOT_DIR"
-npm run build
-
-# Build the server executable with pkg
-echo "Building server executable..."
-npx @yao-pkg/pkg src/server-prod.js \
-    --targets node18-macos-x64 \
-    --output "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server" \
-    --compress GZip
-
-# Also build for ARM64 (Apple Silicon)
-echo "Building ARM64 executable..."
-npx @yao-pkg/pkg src/server-prod.js \
-    --targets node18-macos-arm64 \
-    --output "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server-arm64" \
-    --compress GZip
-
-# Create universal binary
-echo "Creating universal binary..."
-if command -v lipo &> /dev/null; then
-    lipo -create \
-        "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server" \
-        "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server-arm64" \
-        -output "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server-universal" 2>/dev/null || {
-            echo "Note: Could not create universal binary, using x64 version"
-            cp "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server" \
-               "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server-universal"
-        }
-    mv "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server-universal" \
-       "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server"
-    rm -f "$BUILD_DIR/payload/Applications/$APP_NAME/copilot-office-server-arm64"
+# Ensure we have the icon.icns file
+if [ ! -f "$SCRIPT_DIR/icon.icns" ]; then
+    echo "Generating icons..."
+    cd "$ROOT_DIR"
+    npm run build:icons
 fi
 
-# Copy required files
-echo "Copying files..."
-cp -r "$ROOT_DIR/dist" "$BUILD_DIR/payload/Applications/$APP_NAME/"
-cp -r "$ROOT_DIR/certs" "$BUILD_DIR/payload/Applications/$APP_NAME/"
-cp "$ROOT_DIR/manifest.xml" "$BUILD_DIR/payload/Applications/$APP_NAME/"
-cp "$SCRIPT_DIR/launchagent/com.github.copilot-office-addin.plist" "$BUILD_DIR/payload/Applications/$APP_NAME/"
+# Clean extraneous packages and build the Electron app
+echo "Building Electron app..."
+cd "$ROOT_DIR"
+npm run build:electron:mac
 
-# Copy scripts
+# The electron-builder output is in build/electron/mac or build/electron/mac-arm64
+echo ""
+echo "Electron app built successfully!"
+
+# Find the built app
+if [ -d "$ELECTRON_BUILD_DIR/mac-arm64" ]; then
+    APP_PATH="$ELECTRON_BUILD_DIR/mac-arm64/$APP_NAME.app"
+elif [ -d "$ELECTRON_BUILD_DIR/mac" ]; then
+    APP_PATH="$ELECTRON_BUILD_DIR/mac/$APP_NAME.app"
+else
+    echo "Error: Could not find built app in $ELECTRON_BUILD_DIR"
+    exit 1
+fi
+
+echo "App location: $APP_PATH"
+
+# Create installer package
+echo ""
+echo "Creating installer package..."
+
+mkdir -p "$BUILD_DIR"
+mkdir -p "$BUILD_DIR/payload/Applications"
+mkdir -p "$BUILD_DIR/scripts"
+
+# Copy the app
+cp -R "$APP_PATH" "$BUILD_DIR/payload/Applications/"
+
+# Copy LaunchAgent plist
+cp "$SCRIPT_DIR/launchagent/com.github.copilot-office-addin.plist" "$BUILD_DIR/payload/Applications/$APP_NAME.app/Contents/Resources/"
+
+# Copy install scripts
 cp "$SCRIPT_DIR/scripts/preinstall" "$BUILD_DIR/scripts/"
 cp "$SCRIPT_DIR/scripts/postinstall" "$BUILD_DIR/scripts/"
 chmod +x "$BUILD_DIR/scripts/preinstall"
@@ -117,10 +116,10 @@ cat > "$BUILD_DIR/welcome.html" << 'EOF'
     <p>This installer will set up the GitHub Copilot Office Add-in on your Mac.</p>
     <p>The installer will:</p>
     <ul>
-        <li>Install the add-in server application</li>
+        <li>Install the add-in application to your Applications folder</li>
         <li>Register the add-in with Word, PowerPoint, and Excel</li>
-        <li>Configure the service to start automatically</li>
-        <li>Trust the required SSL certificate</li>
+        <li>Configure the service to start automatically at login</li>
+        <li>Add a menu bar icon for easy access</li>
     </ul>
     <p>Click Continue to proceed with the installation.</p>
 </body>
@@ -141,14 +140,15 @@ cat > "$BUILD_DIR/conclusion.html" << 'EOF'
 <body>
     <h1>Installation Complete!</h1>
     <p class="success">✓ GitHub Copilot Office Add-in has been installed successfully.</p>
-    <p>The add-in service is now running in the background.</p>
+    <p>The add-in is now running in your menu bar.</p>
     <p><strong>Next steps:</strong></p>
     <ol>
+        <li>Look for the GitHub Copilot icon in your menu bar</li>
         <li>Open Word, PowerPoint, or Excel</li>
-        <li>Look for the "GitHub Copilot" button on the Home ribbon</li>
+        <li>Find the "GitHub Copilot" button on the Home ribbon</li>
         <li>Click the button to open the Copilot panel</li>
     </ol>
-    <p>The service will start automatically when you log in.</p>
+    <p>The app will start automatically when you log in.</p>
 </body>
 </html>
 EOF

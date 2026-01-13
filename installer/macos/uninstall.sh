@@ -2,7 +2,8 @@
 # Uninstall script for macOS
 # Run: sudo ./uninstall.sh
 
-APP_DIR="/Applications/GitHub Copilot Office Add-in"
+APP_NAME="GitHub Copilot Office Add-in"
+APP_DIR="/Applications/$APP_NAME.app"
 LAUNCHAGENT="com.github.copilot-office-addin"
 
 echo "Uninstalling GitHub Copilot Office Add-in..."
@@ -24,7 +25,10 @@ if [ -f "$LAUNCHAGENT_PATH" ]; then
     rm -f "$LAUNCHAGENT_PATH"
 fi
 
-# Kill any running process
+# Kill any running Electron app
+pkill -f "$APP_NAME" 2>/dev/null || true
+
+# Also kill any old standalone server process (from previous versions)
 pkill -f "copilot-office-server" 2>/dev/null || true
 
 # Remove add-in registrations

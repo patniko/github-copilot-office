@@ -53,9 +53,9 @@ Write-Host "  ✓ Add-in registered" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Setup complete! Next steps:" -ForegroundColor Cyan
-Write-Host "1. Close Word, PowerPoint, and Excel if they are open"
+Write-Host "1. Close Word, PowerPoint, Excel, and OneNote if they are open"
 Write-Host "2. Start the dev server: npm run dev"
-Write-Host "3. Open Word, PowerPoint, or Excel"
+Write-Host "3. Open Word, PowerPoint, Excel, or OneNote"
 Write-Host "4. Look for 'Copilot Agent' button on the Home ribbon"
 Write-Host ""
 Write-Host "To unregister, run: .\unregister.ps1" -ForegroundColor Gray

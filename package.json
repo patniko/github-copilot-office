@@ -12,9 +12,10 @@
     "build:installer": "npm run build && npm run build:macos && npm run build:windows",
     "build:macos": "./installer/macos/build.sh",
     "build:windows": "powershell -ExecutionPolicy Bypass -File installer/windows/build.ps1",
-    "build:electron": "npm run build && electron-builder",
-    "build:electron:win": "npm run build && electron-builder --win",
-    "build:electron:mac": "npm run build && electron-builder --mac"
+    "build:electron": "npm run clean:extraneous && npm run build && electron-builder",
+    "build:electron:win": "npm run clean:extraneous && npm run build && electron-builder --win",
+    "build:electron:mac": "npm run clean:extraneous && npm run build && electron-builder --mac",
+    "clean:extraneous": "node scripts/clean-extraneous.js"
   },
   "pkg": {
     "assets": [],
@@ -34,7 +35,10 @@
       "src/server-prod.js",
       "src/copilotProxy.js",
       "node_modules/**/*",
-      "!node_modules/**/node_modules/**"
+      "!node_modules/**/node_modules/**",
+      "!node_modules/office-addin-*/**",
+      "!node_modules/npm-*/**",
+      "!node_modules/read-package-json-fast/**"
     ],
     "extraResources": [
       {
