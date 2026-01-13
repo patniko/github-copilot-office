@@ -23,6 +23,7 @@ module.exports = defineConfig({
   build: {
     outDir: '../../dist',
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     port: 3000,

@@ -1,7 +1,7 @@
 {
-  "name": "word-addin",
+  "name": "GitHub Copilot Office Add-In",
   "version": "1.0.0",
-  "description": "GitHub Copilot Office Add-in",
+  "description": "Add GitHub Copilot add-in to Office, Word and PowerPoint applications.",
   "main": "src/tray/main.js",
   "scripts": {
     "dev": "node src/server.js",
