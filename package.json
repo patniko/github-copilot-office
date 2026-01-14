@@ -30,12 +30,14 @@
     "directories": {
       "output": "build/electron"
     },
+    "asarUnpack": [
+      "node_modules/@github/copilot/**/*"
+    ],
     "files": [
       "src/tray/**/*",
       "src/server-prod.js",
       "src/copilotProxy.js",
       "node_modules/**/*",
-      "!node_modules/**/node_modules/**",
       "!node_modules/office-addin-*/**",
       "!node_modules/npm-*/**",
       "!node_modules/read-package-json-fast/**"
