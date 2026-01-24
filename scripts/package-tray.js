@@ -7,6 +7,7 @@ const os = require('os');
 const platform = os.platform();
 const projectRoot = path.resolve(__dirname, '..');
 const buildDir = path.join(projectRoot, 'build', 'tray-package');
+const electronDir = path.join(projectRoot, 'build', 'electron');
 const version = require(path.join(projectRoot, 'package.json')).version;
 
 // Clean and create build directory
@@ -17,84 +18,70 @@ fs.mkdirSync(buildDir, { recursive: true });
 
 console.log(`Packaging tray app for ${platform}...`);
 
-// Build the app first
-console.log('Building app...');
-execSync('npm run build', { cwd: projectRoot, stdio: 'inherit' });
-
-// Files to include in the package
-const filesToCopy = [
-  'package.json',
-  'package-lock.json',
-  'manifest.xml',
-  'GETTING_STARTED.md',
-];
-
-const dirsToCopy = [
-  'src',
-  'dist',
-  'certs',
-  'assets',
-];
-
-// Copy files
-for (const file of filesToCopy) {
-  const src = path.join(projectRoot, file);
-  const dest = path.join(buildDir, file);
-  if (fs.existsSync(src)) {
-    fs.copyFileSync(src, dest);
-    console.log(`Copied ${file}`);
-  }
-}
-
-// Copy directories
-function copyDir(src, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  const entries = fs.readdirSync(src, { withFileTypes: true });
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
-
-for (const dir of dirsToCopy) {
-  const src = path.join(projectRoot, dir);
-  const dest = path.join(buildDir, dir);
-  if (fs.existsSync(src)) {
-    copyDir(src, dest);
-    console.log(`Copied ${dir}/`);
-  }
-}
-
-// Copy platform-specific scripts
+// Build the Electron app with electron-builder (creates unpacked app)
+console.log('Building Electron app...');
 if (platform === 'darwin') {
+  execSync('npm run build:installer:mac', { cwd: projectRoot, stdio: 'inherit' });
+} else if (platform === 'win32') {
+  execSync('npm run build:installer:win', { cwd: projectRoot, stdio: 'inherit' });
+}
+
+// Copy the built app
+if (platform === 'darwin') {
+  const appName = 'GitHub Copilot Office Add-in.app';
+  const macUnpackedDir = path.join(electronDir, 'mac');
+  const macArmUnpackedDir = path.join(electronDir, 'mac-arm64');
+  
+  // Check for arm64 or intel mac build
+  let sourceApp;
+  if (fs.existsSync(macArmUnpackedDir)) {
+    sourceApp = path.join(macArmUnpackedDir, appName);
+  } else if (fs.existsSync(macUnpackedDir)) {
+    sourceApp = path.join(macUnpackedDir, appName);
+  }
+  
+  if (sourceApp && fs.existsSync(sourceApp)) {
+    console.log(`Copying ${appName}...`);
+    execSync(`cp -R "${sourceApp}" "${buildDir}/"`, { stdio: 'inherit' });
+  } else {
+    console.error('Could not find built macOS app');
+    process.exit(1);
+  }
+  
+  // Copy register script
   fs.copyFileSync(
     path.join(projectRoot, 'register.sh'),
     path.join(buildDir, 'register.sh')
   );
-  fs.copyFileSync(
-    path.join(projectRoot, 'unregister.sh'),
-    path.join(buildDir, 'unregister.sh')
-  );
-  // Make scripts executable
   fs.chmodSync(path.join(buildDir, 'register.sh'), 0o755);
-  fs.chmodSync(path.join(buildDir, 'unregister.sh'), 0o755);
-  console.log('Copied register.sh and unregister.sh');
+  console.log('Copied register.sh');
+  
 } else if (platform === 'win32') {
+  const winUnpackedDir = path.join(electronDir, 'win-unpacked');
+  
+  if (fs.existsSync(winUnpackedDir)) {
+    console.log('Copying Windows app...');
+    // Copy the entire win-unpacked folder contents
+    execSync(`xcopy "${winUnpackedDir}\\*" "${buildDir}\\" /E /I /Y`, { stdio: 'inherit' });
+  } else {
+    console.error('Could not find built Windows app');
+    process.exit(1);
+  }
+  
+  // Copy register script
   fs.copyFileSync(
     path.join(projectRoot, 'register.ps1'),
     path.join(buildDir, 'register.ps1')
   );
-  fs.copyFileSync(
-    path.join(projectRoot, 'unregister.ps1'),
-    path.join(buildDir, 'unregister.ps1')
-  );
-  console.log('Copied register.ps1 and unregister.ps1');
+  console.log('Copied register.ps1');
 }
+
+// Copy GETTING_STARTED.md
+fs.copyFileSync(
+  path.join(projectRoot, 'GETTING_STARTED.md'),
+  path.join(buildDir, 'GETTING_STARTED.md')
+);
+console.log('Copied GETTING_STARTED.md');
 
 // Create the zip
 const zipName = platform === 'darwin' 
@@ -102,10 +89,15 @@ const zipName = platform === 'darwin'
   : `copilot-office-addin-windows-v${version}.zip`;
 const zipPath = path.join(projectRoot, 'build', zipName);
 
+// Remove existing zip if present
+if (fs.existsSync(zipPath)) {
+  fs.unlinkSync(zipPath);
+}
+
 console.log(`Creating ${zipName}...`);
 
 if (platform === 'darwin') {
-  execSync(`cd "${buildDir}" && zip -r "${zipPath}" .`, { stdio: 'inherit' });
+  execSync(`cd "${buildDir}" && zip -r -y "${zipPath}" .`, { stdio: 'inherit' });
 } else if (platform === 'win32') {
   execSync(
     `powershell -Command "Compress-Archive -Path '${buildDir}\\*' -DestinationPath '${zipPath}' -Force"`,

@@ -30,6 +30,8 @@ jobs:
 
       - name: Package tray app
         run: npm run package:tray
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
@@ -96,17 +98,15 @@ jobs:
             Download the zip for your platform, extract it, then:
             
             ### Quick Start
-            1. Run the register script to trust the SSL certificate and register the manifest:
+            1. Run the register script once to trust the SSL certificate and register the manifest:
                - **macOS:** `./register.sh`
                - **Windows (PowerShell as Admin):** `.\register.ps1`
-            2. Install dependencies and start the tray app:
-               ```bash
-               npm install
-               npm run start:tray
-               ```
-            3. Open Word, PowerPoint, or Excel and go to **Insert** → **Add-ins** → **My Add-ins** to find GitHub Copilot
+            2. Launch the app:
+               - **macOS:** Double-click `GitHub Copilot Office Add-in.app`
+               - **Windows:** Run `GitHub Copilot Office Add-in.exe`
+            3. Open Word, PowerPoint, or Excel → **Insert** → **Add-ins** → **My Add-ins** → **GitHub Copilot**
             
-            See `GETTING_STARTED.md` in the zip for detailed instructions.
+            See `GETTING_STARTED.md` for detailed instructions.
           files: artifacts/*.zip
           draft: false
           prerelease: false
