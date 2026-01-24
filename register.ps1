@@ -2,8 +2,7 @@ $manifestPath = "$PSScriptRoot\manifest.xml"
 $manifestFullPath = (Resolve-Path $manifestPath).Path
 $certPath = "$PSScriptRoot\certs\localhost.pem"
 
-Write-Host "Setting up Office Add-in (DEVELOPMENT) for Windows..." -ForegroundColor Cyan
-Write-Host "This registers the add-in on port 3000 (for local dev server)" -ForegroundColor Yellow
+Write-Host "Setting up Office Add-in for Windows..." -ForegroundColor Cyan
 Write-Host ""
 
 # Step 1: Trust the SSL certificate
@@ -59,6 +58,5 @@ Write-Host "2. Start the dev server: npm run dev"
 Write-Host "3. Open Word, PowerPoint, Excel, or OneNote"
 Write-Host "4. Look for 'Copilot Agent' button on the Home ribbon"
 Write-Host ""
-Write-Host "Note: This uses port 3000. For production (port 52390), use .\register-prod.ps1" -ForegroundColor Gray
 Write-Host "To unregister, run: .\unregister.ps1" -ForegroundColor Gray
 

@@ -5,8 +5,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MANIFEST_PATH="$SCRIPT_DIR/manifest.xml"
 CERT_PATH="$SCRIPT_DIR/certs/localhost.pem"
 
-echo -e "\033[36mSetting up Office Add-in (DEVELOPMENT) for macOS...\033[0m"
-echo -e "\033[33mThis registers the add-in on port 3000 (for local dev server)\033[0m"
+echo -e "\033[36mSetting up Office Add-in for macOS...\033[0m"
 echo ""
 
 # Step 1: Trust the SSL certificate
@@ -62,5 +61,4 @@ echo "2. Start the dev server: npm run dev"
 echo "3. Open Word, PowerPoint, Excel, or OneNote"
 echo "4. Look for 'Copilot Agent' button on the Home ribbon"
 echo ""
-echo -e "\033[90mNote: This uses port 3000. For production (port 52390), use ./register-prod.sh\033[0m"
 echo -e "\033[90mTo unregister, run: ./unregister.sh\033[0m"

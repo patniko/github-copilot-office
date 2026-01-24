@@ -104,7 +104,7 @@ async function createServer() {
     key: fs.readFileSync(keyPath),
   };
   
-  const PORT = 3000;
+  const PORT = 52390;
   const httpsServer = https.createServer(httpsConfig, app);
 
   // Setup WebSocket proxy for Copilot

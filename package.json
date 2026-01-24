@@ -53,7 +53,7 @@
         "to": "assets"
       },
       {
-        "from": "manifest-prod.xml",
+        "from": "manifest.xml",
         "to": "manifest.xml"
       }
     ],

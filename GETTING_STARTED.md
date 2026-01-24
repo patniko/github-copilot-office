@@ -71,7 +71,7 @@ You should see the GitHub Copilot icon appear in your system tray (Windows) or m
 ```bash
 npm run dev
 ```
-This starts the development server on port 3000 with hot reload (vs the tray app on port 52390).
+This starts the development server on port 52390 with hot reload.
 
 ## Uninstalling
 

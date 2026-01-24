@@ -78,8 +78,8 @@ See [installer/README.md](installer/README.md) for detailed build instructions, 
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server with hot reload (port 3000) |
-| `npm run start` | Run production server standalone (port 52390) |
+| `npm run dev` | Start development server with hot reload |
+| `npm run start` | Run production server standalone |
 | `npm run start:tray` | Run Electron tray app locally |
 | `npm run build` | Build frontend for production |
 | `npm run build:installer` | Build installer for current platform |
@@ -101,7 +101,7 @@ See [installer/README.md](installer/README.md) for detailed build instructions, 
 ## Troubleshooting
 
 ### Add-in not appearing
-1. Ensure the server is running: visit https://localhost:52390 (production) or https://localhost:3000 (development)
+1. Ensure the server is running: visit https://localhost:52390
 2. Look for the GitHub Copilot icon in the system tray (Windows) or menu bar (macOS)
 3. Restart the Office application
 4. Clear Office cache and try again
