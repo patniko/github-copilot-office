@@ -12,7 +12,8 @@
     "build:installer": "npm run clean:extraneous && npm run build && electron-builder",
     "build:installer:win": "npm run clean:extraneous && npm run build && electron-builder --win",
     "build:installer:mac": "npm run clean:extraneous && npm run build && electron-builder --mac",
-    "clean:extraneous": "node scripts/clean-extraneous.js"
+    "clean:extraneous": "node scripts/clean-extraneous.js",
+    "package:tray": "node scripts/package-tray.js"
   },
   "pkg": {
     "assets": [],

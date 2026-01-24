@@ -1,0 +1,112 @@
+name: Build Tray Package Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@github'
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Package tray app
+        run: npm run package:tray
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-tray-package
+          path: build/copilot-office-addin-macos-*.zip
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@github'
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Package tray app
+        run: npm run package:tray
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-tray-package
+          path: build/copilot-office-addin-windows-*.zip
+          if-no-files-found: error
+
+  create-release:
+    needs: [build-mac, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-tray-package
+          path: artifacts
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-tray-package
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: Release v${{ inputs.version }}
+          body: |
+            ## GitHub Copilot Office Add-in v${{ inputs.version }}
+            
+            Download the zip for your platform, extract it, then:
+            
+            ### Quick Start
+            1. Run the register script to trust the SSL certificate and register the manifest:
+               - **macOS:** `./register.sh`
+               - **Windows (PowerShell as Admin):** `.\register.ps1`
+            2. Install dependencies and start the tray app:
+               ```bash
+               npm install
+               npm run start:tray
+               ```
+            3. Open Word, PowerPoint, or Excel and go to **Insert** → **Add-ins** → **My Add-ins** to find GitHub Copilot
+            
+            See `GETTING_STARTED.md` in the zip for detailed instructions.
+          files: artifacts/*.zip
+          draft: false
+          prerelease: false
