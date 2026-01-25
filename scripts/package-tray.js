@@ -18,12 +18,13 @@ fs.mkdirSync(buildDir, { recursive: true });
 
 console.log(`Packaging tray app for ${platform}...`);
 
-// Build the Electron app with electron-builder (creates unpacked app)
+// Build the Electron app with electron-builder (unpacked only, no installer)
 console.log('Building Electron app...');
+execSync('npm run clean:extraneous && npm run build', { cwd: projectRoot, stdio: 'inherit' });
 if (platform === 'darwin') {
-  execSync('npm run build:installer:mac', { cwd: projectRoot, stdio: 'inherit' });
+  execSync('npx electron-builder --mac --dir', { cwd: projectRoot, stdio: 'inherit' });
 } else if (platform === 'win32') {
-  execSync('npm run build:installer:win', { cwd: projectRoot, stdio: 'inherit' });
+  execSync('npx electron-builder --win --dir', { cwd: projectRoot, stdio: 'inherit' });
 }
 
 // Copy the built app
@@ -76,9 +77,9 @@ if (platform === 'darwin') {
   console.log('Copied register.ps1');
 }
 
-// Copy GETTING_STARTED.md
+// Copy GETTING_STARTED_RELEASE.md as GETTING_STARTED.md
 fs.copyFileSync(
-  path.join(projectRoot, 'GETTING_STARTED.md'),
+  path.join(projectRoot, 'GETTING_STARTED_RELEASE.md'),
   path.join(buildDir, 'GETTING_STARTED.md')
 );
 console.log('Copied GETTING_STARTED.md');
