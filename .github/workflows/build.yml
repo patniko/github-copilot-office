@@ -32,13 +32,18 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false  # Skip code signing for now
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Upload macOS artifacts
+      - name: Upload macOS Intel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-installer
-          path: |
-            build/electron/*.dmg
-            build/electron/*.zip
+          name: macos-installer-x64
+          path: build/electron/*-x64.dmg
+          if-no-files-found: error
+
+      - name: Upload macOS Apple Silicon artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer-arm64
+          path: build/electron/*-arm64.dmg
           if-no-files-found: error
 
   build-windows:

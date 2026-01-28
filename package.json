@@ -71,7 +71,12 @@
       "include": "installer/windows/nsis-scripts.nsh"
     },
     "mac": {
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
       "icon": "installer/macos/icon.icns",
       "category": "public.app-category.productivity",
       "extendInfo": {
