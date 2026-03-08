@@ -8,6 +8,7 @@ import {
 import { ChatInput, ImageAttachment } from "./components/ChatInput";
 import { Message, MessageList, DebugEvent } from "./components/MessageList";
 import { HeaderBar, ModelType } from "./components/HeaderBar";
+import type { ConnectionConfig } from "./components/HeaderBar";
 import { SessionHistory } from "./components/SessionHistory";
 import { useIsDarkMode } from "./useIsDarkMode";
 import { useLocalStorage } from "./useLocalStorage";
@@ -70,6 +71,8 @@ export const App: React.FC = () => {
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [officeHost, setOfficeHost] = useState<OfficeHost>("word");
   const [debugEnabled, setDebugEnabled] = useLocalStorage<boolean>("copilot-debug", false);
+  const [connectionConfig, setConnectionConfig] = useLocalStorage<ConnectionConfig>("copilot-connection", { mode: 'local', host: 'localhost', port: 19900 });
+  const [isConnecting, setIsConnecting] = useState(false);
   const isDarkMode = useIsDarkMode();
   
   // Track session creation time
@@ -148,6 +151,7 @@ export const App: React.FC = () => {
     setStreamingText("");
     setError("");
     setShowHistory(false);
+    setIsConnecting(true);
     
     try {
       if (client) {
@@ -156,7 +160,13 @@ export const App: React.FC = () => {
       const host = Office.context.host;
       setOfficeHost(getHostFromOfficeHost(host));
       const tools = getToolsForHost(host);
-      const newClient = await createWebSocketClient(`wss://${location.host}/api/copilot`);
+
+      // Build WebSocket URL based on connection mode
+      let wsUrl = `wss://${location.host}/api/copilot`;
+      if (connectionConfig.mode === 'remote') {
+        wsUrl += `?mode=remote&host=${encodeURIComponent(connectionConfig.host)}&port=${connectionConfig.port}`;
+      }
+      const newClient = await createWebSocketClient(wsUrl);
       setClient(newClient);
 
       // Fetch models via RPC
@@ -172,7 +182,7 @@ export const App: React.FC = () => {
         mode: "replace" as const,
         content: `You are a helpful AI assistant embedded inside Microsoft ${hostName} as an Office Add-in. You have direct access to the open ${hostName} document through the tools provided.
 
-IMPORTANT: You are NOT a file system assistant. The user's document is already open in ${hostName}. Use your ${hostName} tools (like get_presentation_content, get_presentation_overview, get_slide_image, etc.) to read and modify the document directly. Do NOT search for files on disk or ask the user to provide file paths.
+You can also read local files and browse directories on the user's machine when they ask you to use files for context (e.g., "read my notes from ~/projects/foo/README.md"). Use list_directory to explore folders and read_file to read file contents.
 
 ${host === Office.HostType.PowerPoint ? `For PowerPoint:
 - Use get_presentation_overview first to see all slides and understand the deck structure
@@ -190,7 +200,7 @@ ${host === Office.HostType.Excel ? `For Excel:
 - Use get_workbook_content to read cell data
 - The workbook is already open - just call the tools directly` : ''}
 
-Always use your tools to interact with the document. Never ask users to save, export, or provide file paths.`
+Always use your tools to interact with the document. Never ask users to save, export, or provide file paths for the open document.`
       };
 
       const toolNames = tools.map(t => t.name);
@@ -211,6 +221,8 @@ Always use your tools to interact with the document. Never ask users to save, ex
       setSession(newSession);
     } catch (e: any) {
       setError(`Failed to create session: ${e.message}`);
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -231,6 +243,12 @@ Always use your tools to interact with the document. Never ask users to save, ex
   const handleModelChange = (newModel: ModelType) => {
     setSelectedModel(newModel);
     startNewSession(newModel);
+  };
+
+  const handleConnectionChange = (config: ConnectionConfig) => {
+    setConnectionConfig(config);
+    // Restart session with new connection mode
+    startNewSession(selectedModel);
   };
 
   const handleSend = async () => {
@@ -414,6 +432,9 @@ Always use your tools to interact with the document. Never ask users to save, ex
           models={availableModels}
           debugEnabled={debugEnabled}
           onDebugChange={setDebugEnabled}
+          connectionConfig={connectionConfig}
+          onConnectionChange={handleConnectionChange}
+          isConnecting={isConnecting}
         />
 
         <MessageList

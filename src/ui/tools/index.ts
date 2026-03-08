@@ -28,12 +28,19 @@ import { getSlideNotes } from "./getSlideNotes";
 import { setSlideNotes } from "./setSlideNotes";
 import { duplicateSlide } from "./duplicateSlide";
 
+// File system tools (shared across all hosts)
+import { readFile } from "./readFile";
+import { listDirectory } from "./listDirectory";
+
 // New Excel tools
 import { getWorkbookOverview } from "./getWorkbookOverview";
 import { findAndReplaceCells } from "./findAndReplaceCells";
 import { insertChart } from "./insertChart";
 import { applyCellFormatting } from "./applyCellFormatting";
 import { createNamedRange } from "./createNamedRange";
+
+// File system tools available to all hosts
+const fileSystemTools = [readFile, listDirectory];
 
 export const wordTools = [
   getDocumentOverview,
@@ -46,6 +53,7 @@ export const wordTools = [
   findAndReplace,
   insertTable,
   applyStyleToSelection,
+  ...fileSystemTools,
 ];
 
 export const powerpointTools = [
@@ -59,6 +67,7 @@ export const powerpointTools = [
   updateSlideShape,
   setSlideNotes,
   duplicateSlide,
+  ...fileSystemTools,
 ];
 
 export const excelTools = [
@@ -72,6 +81,7 @@ export const excelTools = [
   insertChart,
   applyCellFormatting,
   createNamedRange,
+  ...fileSystemTools,
 ];
 
 export function getToolsForHost(host: typeof Office.HostType[keyof typeof Office.HostType]) {

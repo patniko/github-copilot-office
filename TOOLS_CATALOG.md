@@ -50,6 +50,13 @@ This document lists all available tools that GitHub Copilot can use when working
 | `create_named_range` | Define named ranges for easier reference in formulas and AI interactions. |
 | `web_fetch` | Fetch content from a URL and convert to markdown. |
 
+## File System Tools (All Hosts)
+
+| Tool | Description |
+|------|-------------|
+| `read_file` | Read the text content of a local file (up to 1 MB). Use when the user asks to reference a file for context. |
+| `list_directory` | List files and subdirectories in a local directory. Hidden files are excluded. |
+
 ---
 
 ## Tool Usage Patterns

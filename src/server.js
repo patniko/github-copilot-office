@@ -139,6 +139,54 @@ async function createServer() {
     }
   });
 
+  // Read a file from disk (text content, with size limit)
+  apiRouter.get('/read-file', (req, res) => {
+    try {
+      const filePath = req.query.path;
+      if (!filePath) {
+        return res.status(400).json({ error: 'Missing path parameter' });
+      }
+      const resolved = path.resolve(String(filePath));
+      if (!fs.existsSync(resolved)) {
+        return res.status(404).json({ error: 'File not found', path: resolved });
+      }
+      const stat = fs.statSync(resolved);
+      if (stat.isDirectory()) {
+        return res.status(400).json({ error: 'Path is a directory, not a file', path: resolved });
+      }
+      const MAX_SIZE = 1024 * 1024; // 1 MB
+      if (stat.size > MAX_SIZE) {
+        return res.status(413).json({ error: `File too large (${(stat.size / 1024).toFixed(0)} KB). Max is 1 MB.`, path: resolved });
+      }
+      const content = fs.readFileSync(resolved, 'utf8');
+      res.json({ path: resolved, size: stat.size, content });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // List files and directories at a path
+  apiRouter.get('/list-directory', (req, res) => {
+    try {
+      const dir = req.query.path || os.homedir();
+      const resolved = path.resolve(String(dir));
+      if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+        return res.status(400).json({ error: 'Not a directory', path: resolved });
+      }
+      const entries = fs.readdirSync(resolved, { withFileTypes: true });
+      const items = entries
+        .filter(e => !e.name.startsWith('.'))
+        .map(e => ({ name: e.name, type: e.isDirectory() ? 'directory' : 'file' }))
+        .sort((a, b) => {
+          if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+          return a.localeCompare(b, undefined, { sensitivity: 'base' });
+        });
+      res.json({ path: resolved, entries: items });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Get server's cwd and home for initial folder picker location
   apiRouter.get('/env', (req, res) => {
     res.json({ cwd: process.cwd(), home: os.homedir() });
