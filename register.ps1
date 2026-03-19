@@ -1,4 +1,4 @@
-$appPath = "$PSScriptRoot\GitHub Copilot Office Add-in.exe"
+﻿$appPath = "$PSScriptRoot\GitHub Copilot Office Add-in.exe"
 
 # Check if running from release (exe exists) or dev (manifest in root)
 if (Test-Path $appPath) {
