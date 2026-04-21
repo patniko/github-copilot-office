@@ -5,7 +5,7 @@ import {
   webDarkTheme,
   makeStyles,
 } from "@fluentui/react-components";
-import { ChatInput, ImageAttachment } from "./components/ChatInput";
+import { ChatInput, ImageAttachment, FileAttachment } from "./components/ChatInput";
 import { Message, MessageList, DebugEvent } from "./components/MessageList";
 import { HeaderBar, ModelType } from "./components/HeaderBar";
 import { SessionHistory } from "./components/SessionHistory";
@@ -58,6 +58,7 @@ export const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [images, setImages] = useState<ImageAttachment[]>([]);
+  const [files, setFiles] = useState<FileAttachment[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [currentActivity, setCurrentActivity] = useState<string>("");
   const [streamingText, setStreamingText] = useState<string>("");
@@ -143,6 +144,7 @@ export const App: React.FC = () => {
     setMessages(restoredMessages || []);
     setInputValue("");
     setImages([]);
+    setFiles([]);
     setIsTyping(false);
     setCurrentActivity("");
     setStreamingText("");
@@ -239,7 +241,13 @@ Always use your tools to interact with the document. Never ask users to save, ex
     // Add user message with images
     setMessages((prev) => [...prev, {
       id: crypto.randomUUID(),
-      text: inputValue || (images.length > 0 ? `Sent ${images.length} image${images.length > 1 ? 's' : ''}` : ''),
+      text: inputValue || (
+        images.length > 0
+          ? `Sent ${images.length} image${images.length > 1 ? 's' : ''}`
+          : files.length > 0
+          ? `Sent ${files.length} file${files.length > 1 ? 's' : ''}`
+          : ''
+      ),
       sender: "user",
       timestamp: new Date(),
       images: images.length > 0 ? images.map(img => ({ dataUrl: img.dataUrl, name: img.name })) : undefined,
@@ -255,25 +263,26 @@ Always use your tools to interact with the document. Never ask users to save, ex
     setError("");
 
     try {
-      // Upload images to server and get file paths
+      // Upload local files to the server and get file paths
       const attachments: Array<{ type: "file", path: string, displayName?: string }> = [];
-      
+
+      const uploadItem = async (dataUrl: string, name: string, endpoint: string) => {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl, name }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${name}: ${response.statusText}`);
+        }
+
+        return response.json();
+      };
+
       for (const image of userImages) {
         try {
-          const response = await fetch('/api/upload-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              dataUrl: image.dataUrl,
-              name: image.name 
-            }),
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Failed to upload image: ${response.statusText}`);
-          }
-          
-          const result = await response.json();
+          const result = await uploadItem(image.dataUrl, image.name, '/api/upload-image');
           attachments.push({
             type: "file",
             path: result.path,
@@ -282,6 +291,20 @@ Always use your tools to interact with the document. Never ask users to save, ex
         } catch (uploadError: any) {
           console.error('Image upload error:', uploadError);
           setError(`Failed to upload image: ${uploadError.message}`);
+        }
+      }
+
+      for (const file of files) {
+        try {
+          const result = await uploadItem(file.dataUrl, file.name, '/api/upload-file');
+          attachments.push({
+            type: "file",
+            path: result.path,
+            displayName: file.name,
+          });
+        } catch (uploadError: any) {
+          console.error('File upload error:', uploadError);
+          setError(`Failed to upload file: ${uploadError.message}`);
         }
       }
 
@@ -297,7 +320,7 @@ Always use your tools to interact with the document. Never ask users to save, ex
       let eventCount = 0;
       trafficStats.reset();
       for await (const event of session.query({ 
-        prompt: userInput || "Here are some images for you to analyze.",
+        prompt: userInput || (files.length > 0 ? "Here are some files for you to analyze." : "Here are some images for you to analyze."),
         attachments: attachments.length > 0 ? attachments : undefined
       })) {
         eventCount++;
@@ -433,6 +456,8 @@ Always use your tools to interact with the document. Never ask users to save, ex
           onSend={handleSend}
           images={images}
           onImagesChange={setImages}
+          files={files}
+          onFilesChange={setFiles}
         />
       </div>
     </FluentProvider>

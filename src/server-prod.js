@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { setupCopilotProxy } = require('./copilotProxy');
+const { saveUploadedFile } = require('./uploadFile');
 
 // Determine if we're running from pkg bundle
 const isPkg = typeof process.pkg !== 'undefined';
@@ -47,28 +48,26 @@ async function createServer() {
         return res.status(400).json({ error: 'Invalid image data' });
       }
 
-      const matches = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
-      if (!matches || matches.length !== 3) {
-        return res.status(400).json({ error: 'Invalid data URL format' });
+      if (!dataUrl.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'Invalid image data' });
       }
 
-      const extension = matches[1] === 'svg+xml' ? 'svg' : matches[1];
-      const base64Data = matches[2];
-      const buffer = Buffer.from(base64Data, 'base64');
-
-      const tempDir = path.join(os.tmpdir(), 'copilot-office-images');
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
-
-      const filename = name || `image-${Date.now()}.${extension}`;
-      const filepath = path.join(tempDir, filename);
-      fs.writeFileSync(filepath, buffer);
-
-      res.json({ path: filepath, name: filename });
+      const saved = saveUploadedFile({ dataUrl, name, defaultExtension: '.png', tempSubdir: 'copilot-office-images' });
+      res.json({ path: saved.path, name: saved.name });
     } catch (error) {
       console.error('Upload error:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  apiRouter.post('/upload-file', async (req, res) => {
+    try {
+      const { dataUrl, name } = req.body;
+      const saved = saveUploadedFile({ dataUrl, name });
+      res.json({ path: saved.path, name: saved.name, mimeType: saved.mimeType });
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(400).json({ error: error.message });
     }
   });
 

@@ -19,7 +19,7 @@ Install the following software:
 ### 1. Clone and Install Dependencies
 
 ```bash
-git clone https://github.com/patniko/github-copilot-office.git
+git clone https://github.com/<your-account>/github-copilot-office.git
 cd github-copilot-office
 npm install
 ```
@@ -61,6 +61,11 @@ You should see the GitHub Copilot icon appear in your system tray (Windows) or m
 <img width="358" height="352" alt="image" src="https://github.com/user-attachments/assets/e06d89a5-5fa8-4940-92b6-e60b04c1e5c7" />
 
 6. Have fun!
+
+### Local files
+- Use **Attach files** in the chat box to add local documents from your computer.
+- Pasted images still work as before.
+- For best results, use files that Copilot can read directly, such as text, PDF, Word, PowerPoint, spreadsheet, or code files.
 
 https://github.com/user-attachments/assets/5bb771d3-0bf6-4b7b-8e6c-757a085b3131
 
