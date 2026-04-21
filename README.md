@@ -2,6 +2,22 @@
 
 A Microsoft Office add-in that integrates GitHub Copilot into Word, Excel, and PowerPoint.
 
+## Fork / Reference
+
+This project is based on the open-source repository:
+
+- **Reference project:** `patniko/github-copilot-office`
+
+This fork keeps the original Office add-in idea and extends it for local use and publishing.
+
+## What changed in this fork
+
+- Added a safer local file upload flow for chat attachments
+- Kept image paste/upload support and made it work through a shared upload helper
+- Improved the PowerPoint/Office setup notes so the deployment flow is clearer
+- Added documentation that explains the reference project and the fork-specific changes
+- Tuned the local development flow so the add-in is easier to run and verify on Windows
+
 ## Getting Started
 
 **👉 See [GETTING_STARTED.md](GETTING_STARTED.md) for setup instructions.**
