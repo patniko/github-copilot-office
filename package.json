@@ -30,7 +30,11 @@
       "output": "build/electron"
     },
     "asarUnpack": [
-      "node_modules/@github/copilot-sdk/**/*"
+      "node_modules/@github/copilot-sdk/**/*",
+      "node_modules/@github/copilot/**/*",
+      "node_modules/@github/copilot-darwin-*/**/*",
+      "node_modules/@github/copilot-win32-*/**/*",
+      "node_modules/@github/copilot-linux*/**/*"
     ],
     "files": [
       "src/tray/**/*",
@@ -115,8 +119,8 @@
   "dependencies": {
     "@fluentui/react-components": "^9.72.7",
     "@fluentui/react-icons": "^2.0.315",
-    "@github/copilot": "^0.0.412",
-    "@github/copilot-sdk": "^0.1.25",
+    "@github/copilot": "^1.0.80",
+    "@github/copilot-sdk": "^1.0.11",
     "cors": "^2.8.5",
     "express": "^5.2.1",
     "pptxgenjs": "^4.0.1",

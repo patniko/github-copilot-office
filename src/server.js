@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { setupCopilotProxy } = require('./copilotProxy');
+const { resolveCopilotSdkTypes } = require('./copilotBinary');
 
 async function createServer() {
   const app = express();
@@ -103,10 +104,13 @@ async function createServer() {
     res.sendStatus(204);
   });
 
-  // List available models by reading from the Copilot SDK type declarations
+  // List available models by reading from the Copilot CLI's bundled SDK type declarations
   apiRouter.get('/models', (req, res) => {
     try {
-      const sdkTypes = path.resolve(__dirname, '../node_modules/@github/copilot/sdk/index.d.ts');
+      const sdkTypes = resolveCopilotSdkTypes();
+      if (!sdkTypes) {
+        return res.status(500).json({ error: 'Copilot CLI platform package not found' });
+      }
       const content = fs.readFileSync(sdkTypes, 'utf8');
       const match = content.match(/SUPPORTED_MODELS:\s*readonly\s*\[([^\]]+)\]/);
       if (!match) {

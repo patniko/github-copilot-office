@@ -1,45 +1,26 @@
 const { WebSocketServer } = require('ws');
 const { spawn } = require('child_process');
 const net = require('net');
-const path = require('path');
-const { pathToFileURL } = require('url');
-
-// Resolve the @github/copilot bin entry point
-const COPILOT_MODULE = path.resolve(__dirname, '../node_modules/@github/copilot/index.js');
-const COPILOT_MODULE_URL = pathToFileURL(COPILOT_MODULE).href;
-
-// Check if running in Electron
-const isElectron = !!(process.versions && process.versions.electron);
+const { resolveCopilotBinary } = require('./copilotBinary');
 
 /**
- * Spawn the Copilot CLI process.
- * 
- * When running under Electron with ELECTRON_RUN_AS_NODE, we need to use a special
- * approach: the Copilot CLI expects process.argv to NOT include a script path
- * (it treats argv[1] as a positional argument if it doesn't start with -).
- * 
- * So instead of: electron.exe copilot.js --server --stdio
- * We use: electron.exe -e "inline code that sets argv and imports copilot"
+ * Spawn the Copilot CLI process in JSON-RPC server mode.
+ *
+ * The CLI is a self-contained native executable, so it is spawned directly. This works
+ * identically under Electron — the previous ELECTRON_RUN_AS_NODE argv-rewriting wrapper
+ * was only needed back when the CLI shipped as a JavaScript bundle run through Node.
  */
 function spawnCopilotProcess() {
-  if (isElectron) {
-    // Create inline code that:
-    // 1. Sets process.argv to what the CLI expects (no script path)
-    // 2. Dynamically imports the copilot module
-    const wrapperCode = `
-      process.argv = [process.argv[0], '--server', '--stdio'];
-      import('${COPILOT_MODULE_URL}');
-    `;
-    
-    return spawn(process.execPath, ['--input-type=module', '-e', wrapperCode], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-    });
-  } else {
-    return spawn(process.execPath, [COPILOT_MODULE, '--server', '--stdio'], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-  }
+  const binary = resolveCopilotBinary();
+
+  // The native binary must not inherit Electron's Node-mode flag from the host process.
+  const env = { ...process.env };
+  delete env.ELECTRON_RUN_AS_NODE;
+
+  return spawn(binary, ['--server', '--stdio'], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env,
+  });
 }
 
 /**
@@ -99,13 +80,13 @@ function pipeLspToWebSocket(readable, ws, label) {
               ? (ev.data?.deltaContent || '').slice(0, 60)
               : ev.type === 'session.error'
               ? (ev.data?.message || JSON.stringify(ev.data)).slice(0, 100)
+              : ev.type === 'external_tool.requested'
+              ? `${ev.data?.toolName || ''}`
+              : ev.type === 'permission.requested'
+              ? `${ev.data?.permissionRequest?.kind || ''} ${ev.data?.permissionRequest?.intention || ''}`
               : '';
             console.log(`[${label}→ws] ${ev.type}${preview ? ' ' + preview : ''}`);
           }
-        } else if (json.method === 'tool.call') {
-          console.log(`[${label}→ws] tool.call: ${json.params?.toolName}`);
-        } else if (json.method === 'permission.request') {
-          console.log(`[${label}→ws] permission.request: ${json.params?.permissionRequest?.kind} ${json.params?.permissionRequest?.intention || ''}`);
         } else if (json.method) {
           console.log(`[${label}→ws] ${json.method}`);
         }
@@ -160,7 +141,14 @@ function setupCopilotProxy(httpsServer) {
  * Local mode: spawn a Copilot CLI process and pipe stdio ↔ WebSocket.
  */
 function handleLocalConnection(ws) {
-  const child = spawnCopilotProcess();
+  let child;
+  try {
+    child = spawnCopilotProcess();
+  } catch (err) {
+    console.error('[copilot-cli]', err.message);
+    ws.close(1011, 'Copilot CLI binary not found');
+    return;
+  }
 
   child.on('error', () => {
     ws.close(1011, 'Child process error');

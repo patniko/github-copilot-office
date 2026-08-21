@@ -2,6 +2,10 @@ import type { Tool } from "@github/copilot-sdk";
 
 export const readFile: Tool = {
   name: "read_file",
+  // Deliberately shadows the runtime's built-in read_file: the task pane runs in the
+  // Office sandbox with no filesystem access, so reads must route through the add-in's
+  // local server instead. Protocol v3 requires this opt-in for built-in name collisions.
+  overridesBuiltInTool: true,
   description:
     "Read the text content of a file from the local file system. Returns the file content as a string. Use this when the user asks you to read or reference a local file for context. Max file size is 1 MB.",
   parameters: {

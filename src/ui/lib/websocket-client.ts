@@ -13,18 +13,27 @@ import type {
     Tool,
     ToolHandler,
     ToolInvocation,
-    ToolResult,
+    ToolResultObject,
 } from "@github/copilot-sdk";
 
-interface ToolCallRequestPayload {
+/** Protocol version implemented by this client. Must match the runtime's `connect` reply. */
+const SDK_PROTOCOL_VERSION = 3;
+const MIN_SDK_PROTOCOL_VERSION = 3;
+
+/** Payload of the `external_tool.requested` session event (protocol v3). */
+interface ExternalToolRequestedData {
+    requestId: string;
     sessionId: string;
     toolCallId: string;
     toolName: string;
-    arguments: unknown;
+    arguments?: unknown;
 }
 
-interface ToolCallResponsePayload {
-    result: ToolResult;
+/** Payload of the `permission.requested` session event (protocol v3). */
+interface PermissionRequestedData {
+    requestId: string;
+    permissionRequest: PermissionRequest;
+    resolvedByHook?: boolean;
 }
 
 export interface PermissionRequest {
@@ -60,11 +69,6 @@ export interface ModelInfo {
             reasoningEffort?: boolean;
         };
     };
-}
-
-interface PermissionRequestPayload {
-    sessionId: string;
-    permissionRequest: PermissionRequest;
 }
 
 export interface CreateSessionOptions extends SessionConfig {
@@ -142,8 +146,101 @@ export class BrowserCopilotSession {
     }
 
     _dispatchEvent(event: SessionEvent): void {
+        // Protocol v3 delivers tool invocations and permission prompts as session
+        // events that the client answers with a follow-up RPC, rather than as
+        // server-to-client JSON-RPC requests.
+        this._handleBroadcastEvent(event);
+
         for (const handler of this.eventHandlers) {
             try { handler(event); } catch { /* ignore */ }
+        }
+    }
+
+    /** Routes protocol-v3 broadcast events to locally registered handlers. */
+    private _handleBroadcastEvent(event: SessionEvent): void {
+        if (event.type === "external_tool.requested") {
+            const data = (event as unknown as { data: ExternalToolRequestedData }).data;
+            void this._executeToolAndRespond(data);
+        } else if (event.type === "permission.requested") {
+            const data = (event as unknown as { data: PermissionRequestedData }).data;
+            if (data.resolvedByHook) return;
+            void this._executePermissionAndRespond(data);
+        }
+    }
+
+    private async _executeToolAndRespond(data: ExternalToolRequestedData): Promise<void> {
+        const { requestId, toolCallId, toolName } = data;
+        const args = data.arguments;
+        const handler = this.toolHandlers.get(toolName);
+
+        if (!handler) {
+            console.log("[external_tool.requested] no handler for", toolName);
+            await this._respondToTool(requestId, undefined, `Tool '${toolName}' not supported`);
+            return;
+        }
+
+        try {
+            const invocation: ToolInvocation = {
+                sessionId: this.sessionId,
+                toolCallId,
+                toolName,
+                arguments: args,
+            };
+            const rawResult = await handler(args, invocation);
+            const result: string | ToolResultObject =
+                rawResult == null
+                    ? ""
+                    : typeof rawResult === "string"
+                      ? rawResult
+                      : this._isToolResultObject(rawResult)
+                        ? rawResult
+                        : JSON.stringify(rawResult);
+            await this._respondToTool(requestId, result);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.log("[external_tool.requested] error", error);
+            await this._respondToTool(requestId, undefined, message);
+        }
+    }
+
+    private _isToolResultObject(value: unknown): value is ToolResultObject {
+        return (
+            typeof value === "object" &&
+            value !== null &&
+            typeof (value as ToolResultObject).textResultForLlm === "string"
+        );
+    }
+
+    private async _respondToTool(
+        requestId: string,
+        result?: string | ToolResultObject,
+        error?: string,
+    ): Promise<void> {
+        try {
+            await this.connection.sendRequest("session.tools.handlePendingToolCall", {
+                sessionId: this.sessionId,
+                requestId,
+                ...(error !== undefined ? { error } : { result }),
+            });
+        } catch (e) {
+            console.error("[external_tool.requested] failed to deliver result", e);
+        }
+    }
+
+    private async _executePermissionAndRespond(data: PermissionRequestedData): Promise<void> {
+        let result: PermissionResult;
+        try {
+            result = await this._handlePermissionRequest(data.permissionRequest);
+        } catch {
+            result = { kind: "denied-interactively-by-user" };
+        }
+        try {
+            await this.connection.sendRequest(
+                "session.permissions.handlePendingPermissionRequest",
+                { sessionId: this.sessionId, requestId: data.requestId, result },
+            );
+        } catch (e) {
+            console.error("[permission.requested] failed to deliver decision", e);
         }
     }
 
@@ -151,7 +248,10 @@ export class BrowserCopilotSession {
         this.toolHandlers.clear();
         if (tools) {
             for (const tool of tools) {
-                this.toolHandlers.set(tool.name, tool.handler);
+                // `handler` is optional in the SDK type; only locally-executed tools have one.
+                if (tool.handler) {
+                    this.toolHandlers.set(tool.name, tool.handler);
+                }
             }
         }
     }
@@ -194,6 +294,7 @@ export class WebSocketCopilotClient {
     private connection: MessageConnection | null = null;
     private wsSocket: WebSocket | null = null;
     private sessions: Map<string, BrowserCopilotSession> = new Map();
+    private negotiatedProtocolVersion: number | null = null;
 
     constructor(private url: string) {}
 
@@ -216,6 +317,33 @@ export class WebSocketCopilotClient {
                 reject(new Error(`Failed to connect to ${this.url}`));
             });
         });
+
+        await this.verifyProtocolVersion();
+    }
+
+    /**
+     * Performs the `connect` handshake and checks that the runtime speaks a
+     * protocol version this client understands.
+     */
+    private async verifyProtocolVersion(): Promise<void> {
+        if (!this.connection) throw new Error("Client not connected");
+
+        const response = await this.connection.sendRequest("connect", {});
+        const serverVersion = (response as { protocolVersion?: number }).protocolVersion;
+
+        if (serverVersion === undefined) {
+            throw new Error(
+                "Copilot runtime did not report a protocol version. Update the Copilot CLI.",
+            );
+        }
+        if (serverVersion < MIN_SDK_PROTOCOL_VERSION || serverVersion > SDK_PROTOCOL_VERSION) {
+            throw new Error(
+                `Copilot protocol version mismatch: this client supports ` +
+                `${MIN_SDK_PROTOCOL_VERSION}-${SDK_PROTOCOL_VERSION}, but the runtime reports ` +
+                `${serverVersion}. Update the Copilot CLI or this add-in.`,
+            );
+        }
+        this.negotiatedProtocolVersion = serverVersion;
     }
 
     async createSession(config: CreateSessionOptions = {}): Promise<BrowserCopilotSession> {
@@ -227,6 +355,10 @@ export class WebSocketCopilotClient {
                 name: tool.name,
                 description: tool.description,
                 parameters: tool.parameters,
+                overridesBuiltInTool: tool.overridesBuiltInTool,
+                skipPermission: tool.skipPermission,
+                defer: tool.defer,
+                metadata: tool.metadata,
             }));
 
         const response = await this.connection.sendRequest("session.create", {
@@ -281,64 +413,6 @@ export class WebSocketCopilotClient {
                 this.sessions.get(n.sessionId)?._dispatchEvent(n.event);
             }
         });
-
-        this.connection.onRequest(
-            "tool.call",
-            async (params: ToolCallRequestPayload): Promise<ToolCallResponsePayload> => {
-                console.log('[tool.call]', params.toolName, params.arguments);
-                const session = this.sessions.get(params.sessionId);
-                const handler = session?.getToolHandler(params.toolName);
-                if (!handler) {
-                    console.log('[tool.call] no handler for', params.toolName);
-                    return {
-                        result: {
-                            textResultForLlm: `Tool '${params.toolName}' not supported`,
-                            resultType: "failure",
-                            error: `tool '${params.toolName}' not supported`,
-                            toolTelemetry: {},
-                        },
-                    };
-                }
-                try {
-                    const invocation: ToolInvocation = {
-                        sessionId: params.sessionId,
-                        toolCallId: params.toolCallId,
-                        toolName: params.toolName,
-                        arguments: params.arguments,
-                    };
-                    const result = await handler(params.arguments, invocation);
-                    console.log('[tool.call] result', result);
-                    return { result: typeof result === "string" ? result : result };
-                } catch (error) {
-                    console.log('[tool.call] error', error);
-                    const message = error instanceof Error ? error.message : String(error);
-                    return {
-                        result: {
-                            textResultForLlm: message,
-                            resultType: "failure",
-                            error: message,
-                            toolTelemetry: {},
-                        },
-                    };
-                }
-            },
-        );
-
-        this.connection.onRequest(
-            "permission.request",
-            async (params: PermissionRequestPayload) => {
-                const session = this.sessions.get(params.sessionId);
-                if (!session) {
-                    return { result: { kind: "denied-interactively-by-user" } };
-                }
-                try {
-                    const result = await session._handlePermissionRequest(params.permissionRequest);
-                    return { result };
-                } catch {
-                    return { result: { kind: "denied-interactively-by-user" } };
-                }
-            },
-        );
     }
 }
 
